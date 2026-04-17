@@ -1,0 +1,12 @@
+# Compiled binary
+makeline-service
+
+# Go build/test cache
+*.test
+*.out
+
+# Environment variables
+.env
+
+# OS
+.DS_Store
