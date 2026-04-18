@@ -105,6 +105,12 @@ func processOrder(msg amqp.Delivery) {
         return
     }
 
+    for _, item := range order.LineItems {
+        if err := db.DecrementProductStock(item.ProductID, item.Quantity); err != nil {
+            log.Printf("Failed to decrement stock for product %s: %v", item.ProductID, err)
+        }
+    }
+
     log.Printf("Order %s complete", order.OrderID)
     msg.Ack(false) // Acknowledge — tells RabbitMQ to remove the message from the queue
 }

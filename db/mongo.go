@@ -14,6 +14,7 @@ import (
 
 var client *mongo.Client
 var collection *mongo.Collection
+var products *mongo.Collection
 
 func Connect() {
     uri := os.Getenv("MONGO_URI")
@@ -37,7 +38,22 @@ func Connect() {
     }
 
     collection = client.Database("bestbuy").Collection("orders")
+    products = client.Database("bestbuy").Collection("products")
     log.Println("Connected to MongoDB")
+}
+
+func DecrementProductStock(productID string, quantity int) error {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    objID, err := primitive.ObjectIDFromHex(productID)
+    if err != nil {
+        return err
+    }
+    filter := bson.M{"_id": objID}
+    update := bson.M{"$inc": bson.M{"stock": -quantity}}
+    _, err = products.UpdateOne(ctx, filter, update)
+    return err
 }
 
 func UpdateOrderStatus(orderID string, status string) error {
