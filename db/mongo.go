@@ -7,6 +7,7 @@ import (
     "time"
 
     "go.mongodb.org/mongo-driver/bson"
+    "go.mongodb.org/mongo-driver/bson/primitive"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -43,8 +44,12 @@ func UpdateOrderStatus(orderID string, status string) error {
     ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
     defer cancel()
 
-    filter := bson.M{"_id": orderID}
+    objID, err := primitive.ObjectIDFromHex(orderID)
+    if err != nil {
+        return err
+    }
+    filter := bson.M{"_id": objID}
     update := bson.M{"$set": bson.M{"status": status}}
-    _, err := collection.UpdateOne(ctx, filter, update)
+    _, err = collection.UpdateOne(ctx, filter, update)
     return err
 }

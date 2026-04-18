@@ -19,6 +19,21 @@ func StartConsuming() {
         log.Fatal("RABBITMQ_URI not set")
     }
 
+    // Run in a goroutine so the health server starts immediately.
+    // Loop forever so a dropped RabbitMQ connection triggers a full reconnect.
+    go func() {
+        for {
+            if err := consume(uri); err != nil {
+                log.Printf("Consumer exited with error: %v — reconnecting in 5s", err)
+            } else {
+                log.Println("Consumer channel closed — reconnecting in 5s")
+            }
+            time.Sleep(5 * time.Second)
+        }
+    }()
+}
+
+func consume(uri string) error {
     var conn *amqp.Connection
     var err error
     for i := 0; i < 5; i++ {
@@ -30,37 +45,37 @@ func StartConsuming() {
         time.Sleep(3 * time.Second)
     }
     if err != nil {
-        log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+        return err
     }
+    defer conn.Close()
 
     ch, err := conn.Channel()
     if err != nil {
-        log.Fatalf("Failed to open channel: %v", err)
+        return err
     }
+    defer ch.Close()
 
     // Declare the queue — idempotent, safe to call even if queue already exists
     _, err = ch.QueueDeclare(QueueName, true, false, false, false, nil)
     if err != nil {
-        log.Fatalf("Failed to declare queue: %v", err)
+        return err
     }
 
     // Prefetch 1: only give this consumer one message at a time.
-    // Without this, RabbitMQ could flood the consumer with all pending messages.
     ch.Qos(1, 0, false)
 
     msgs, err := ch.Consume(QueueName, "", false, false, false, false, nil)
     if err != nil {
-        log.Fatalf("Failed to register consumer: %v", err)
+        return err
     }
 
     log.Println("makeline-service listening for orders...")
 
-    // Process messages in a goroutine so the health server can still run
-    go func() {
-        for msg := range msgs {
-            processOrder(msg)
-        }
-    }()
+    for msg := range msgs {
+        processOrder(msg)
+    }
+
+    return nil
 }
 
 func processOrder(msg amqp.Delivery) {
