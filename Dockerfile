@@ -1,6 +1,6 @@
 # Stage 1: Build
 # Go compiles to a single static binary — no runtime needed
-FROM golang:1.22-alpine AS build
+FROM golang:1.24-alpine AS build
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
